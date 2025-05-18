@@ -7,8 +7,8 @@ pygame.init()
 window = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Hollow v2")
 
-def get_font(size):
-  return pygame.font.Font("assets/font.ttf", size)
+def get_font_cinzel(size):
+  return pygame.font.Font("assets/Cinzel.ttf", size)
 
 def play():
   while True:
@@ -20,12 +20,12 @@ def options():
 
     window.fill("white")
 
-    options_text = get_font(45).render("This is the OPTIONS window.", True, "Black")
+    options_text = get_font_cinzel(45).render("This is the OPTIONS window.", True, "Black")
     options_rect = options_text.get_rect(center=(750, 260))
     window.blit(options_text, options_rect)
 
     options_back = Button(image=None, pos=(750, 460), 
-                          text_input="BACK", font=get_font(75), base_color="Black", hovering_color="Green")
+                          text_input="BACK", font=get_font_cinzel(75), base_color="Black", hovering_color="Green")
 
     options_back.changeColor(options_mouse_pos)
     options_back.update(window)
@@ -41,7 +41,7 @@ def options():
     pygame.display.update()
 
 def main_menu():
-  bg_menu = pygame.image.load("assets/MenuBackground.png")
+  bg_menu = pygame.image.load("assets/MenuBackgroundVoid.jpg")
   bg_menu = pygame.transform.scale(bg_menu, (WIDTH, HEIGHT))
 
   while True:
@@ -49,15 +49,12 @@ def main_menu():
 
     menu_mouse_pos = pygame.mouse.get_pos()
 
-    menu_text = get_font(100).render("Hollow v2", True, "#b68f40")
-    menu_rect = menu_text.get_rect(center=(750, 100))
+    menu_text = get_font_cinzel(100).render("Hollow v2", True, "white")
+    menu_rect = menu_text.get_rect(center=(750, 200))
 
-    play_button = Button(image=pygame.image.load("assets/Play Rect.png"), pos=(750, 250), 
-                         text_input="PLAY", font=get_font(75), base_color="#d7fcd4", hovering_color="White")
-    options_button = Button(image=pygame.image.load("assets/Options Rect.png"), pos=(750, 400), 
-                            text_input="OPTIONS", font=get_font(75), base_color="#d7fcd4", hovering_color="White")
-    quit_button= Button(image=pygame.image.load("assets/Quit Rect.png"), pos=(750, 550), 
-                         text_input="QUIT", font=get_font(75), base_color="#d7fcd4", hovering_color="White")
+    play_button = Button(pygame.image.load("assets/Play Rect.png"), pos=(750, 400), text_input="Play Game", font=get_font_cinzel(40), base_color="White", hovering_color="#FAFAF5")
+    options_button = Button(None, pos=(750, 460), text_input="Options", font=get_font_cinzel(40), base_color="White", hovering_color="#FAFAF5")
+    quit_button= Button(None, pos=(750, 520), text_input="Quit Game", font=get_font_cinzel(40), base_color="White", hovering_color="#FAFAF5")
 
     window.blit(menu_text, menu_rect)
 
