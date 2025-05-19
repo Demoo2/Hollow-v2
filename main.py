@@ -1,10 +1,13 @@
-import pygame
-import random
-from sys import exit
+import random, pygame, sys
+from button import Button
 
 WIDTH, HEIGHT = 1500, 800
 FPS = 60
 PLAYER_VEL = 5
+
+
+def get_font_cinzel(size):
+  return pygame.font.Font("assets/Cinzel.ttf", size)
 
 
 class Player(pygame.sprite.Sprite):
@@ -262,7 +265,7 @@ def handle_move(player, objects):
 
   if player.rect.y > HEIGHT - 50:
     player.rect.y = HEIGHT - 50 
-    # Nechapem preco ma to clipuje pod objekty ale tak tato funkcia aspon zaisti ze nevypadnem z mapy
+    # Nechapem preco ma to clipuje pod objekty ale tak tento if statement aspon zaisti ze nevypadnem z mapy
   if player.rect.x < 0:
     player.rect.x = 0
   if player.rect.x > WIDTH - player.width:
@@ -270,11 +273,14 @@ def handle_move(player, objects):
   handle_vertical_collision(player, objects, player.y_vel)
 
 
-def main(window):
+def main(window, paused_time_offset):
   clock = pygame.time.Clock()
 
   bg_image = pygame.image.load("assets/brackground.webp").convert()
   bg_image = pygame.transform.scale(bg_image, (1500, 800))
+
+  pause_menu = False
+  pause_start_time = 0
 
   floor = Platform(0, HEIGHT - 50, WIDTH, 50)
   objects = [
@@ -291,14 +297,55 @@ def main(window):
   run = True
   while run:
     clock.tick(FPS)
-    current_time = pygame.time.get_ticks()
-    
-    for event in pygame.event.get():
+    current_time = pygame.time.get_ticks() - paused_time_offset
+
+    events = pygame.event.get()
+    for event in events:
       if event.type == pygame.QUIT:
         run = False
         break
 
+    if pause_menu:
+      menu_mouse_pos = pygame.mouse.get_pos()
+
+      overlay = pygame.Surface((WIDTH / 3, HEIGHT / 1.5), pygame.SRCALPHA)
+      overlay.fill((0, 0, 0))
+      overlay_rect = overlay.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+      window.blit(overlay, overlay_rect)
+
+      text = get_font_cinzel(40).render("Paused", True, (255, 255, 255))
+      text_rect = text.get_rect(center=(WIDTH // 2, 280))
+      window.blit(text, text_rect)
+
+      continue_game_button = Button(image=None, pos=(WIDTH // 2, 380), text_input="Continue", font=get_font_cinzel(40), base_color="White", hovering_color="#FAFAF5")
+      quit_game_button = Button(image=None, pos=(WIDTH // 2, 440), text_input="Quit Game", font=get_font_cinzel(40), base_color="White", hovering_color="#FAFAF5")
+
+      for button in [continue_game_button, quit_game_button]:
+        button.changeColor(menu_mouse_pos)
+        button.update(window)
+
+      pygame.display.update()
+      for event in events:
+        if event.type == pygame.MOUSEBUTTONDOWN:
+          if continue_game_button.checkForInput(menu_mouse_pos):
+            pause_menu = False
+            paused_time_offset += pygame.time.get_ticks() - pause_start_time
+          if quit_game_button.checkForInput(menu_mouse_pos):
+            run = False
+            break
+        
+        if event.type == pygame.KEYDOWN:
+          if event.key == pygame.K_ESCAPE:
+            pause_menu = False
+            paused_time_offset += pygame.time.get_ticks() - pause_start_time
+      continue
+
+    for event in events:
       if event.type == pygame.KEYDOWN:
+        if event.key == pygame.K_ESCAPE:
+          pause_menu = True
+          pause_start_time = pygame.time.get_ticks()
+
         if event.key == pygame.K_SPACE:
           player.start_jump()
         if event.key == pygame.K_j:
@@ -313,8 +360,11 @@ def main(window):
     draw(window, bg_image, player, objects, test_enemy)
 
   pygame.quit()
-  quit()
+  sys.exit()
 
 
 if __name__ == "__main__":
-  main(window)
+  pygame.init()
+  window = pygame.display.set_mode((WIDTH, HEIGHT))
+  pygame.display.set_caption("Hollow v2")
+  main(window, paused_time_offset=0)
