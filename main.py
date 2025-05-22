@@ -158,6 +158,8 @@ class Enemy(pygame.sprite.Sprite):
     self.teleport_cooldown = random.randint(3000, 5000)
     self.last_teleport = 0
 
+    self.last_attack = 0
+
     self.hp = 500
 
   def get_hit(self):
@@ -178,10 +180,76 @@ class Enemy(pygame.sprite.Sprite):
         self.rect.x = x
         self.rect.y = y
         self.last_teleport = current_time
+    
+  def next_attack_cooldown(self, current_time, attack):
+    return current_time - self.last_attack >= attack.after_attack_cooldown
+
+  def attack(self, attack, current_time):
+    if self.next_attack_cooldown(current_time, attack):
+      attack.can_attack(current_time)
+      self.last_attack = current_time
 
   def draw(self, win):
     win.blit(self.image, (self.rect.x, self.rect.y))
 
+
+class HandAttack(pygame.sprite.Sprite):
+  def __init__(self, player, width, height, offset):
+    super().__init__()
+    self.image = pygame.Surface((width, height), pygame.SRCALPHA)
+    self.image.fill("red")
+    self.rect = pygame.Rect(0, -1000, width, height)
+    self.mask = pygame.mask.from_surface(self.image)
+
+    self.offset = offset
+    self.phase = "done"
+    self.attack_start_time = 0
+
+    self.follow_duration = random.randint(1000, 1500)
+    self.freeze_duration = 300
+    self.descend_distance = 250
+    self.descend_duration = 100
+    self.after_attack_cooldown = random.randint(5000, 7000)
+
+  def can_attack(self, current_time):
+      self.attack_start_time = current_time
+      self.phase = "follow"
+      return True
+
+  def attack(self, player, current_time):
+      elapsed = current_time - self.attack_start_time
+
+      if self.phase == "follow":
+          if elapsed <= self.follow_duration:
+              self.rect.x = player.rect.centerx - self.rect.width // 2
+              self.rect.y = player.rect.y - self.offset
+          else:
+              self.phase = "freeze"
+              self.freeze_start_time = current_time
+
+      elif self.phase == "freeze":
+          if current_time - self.freeze_start_time > self.freeze_duration:
+              self.phase = "descend"
+              self.descend_start_y = self.rect.y
+              self.descend_start_time = current_time
+
+      elif self.phase == "descend":
+          descend_elapsed = current_time - self.descend_start_time
+          descend_duration = self.descend_duration
+          if descend_elapsed <= descend_duration:
+              progress = descend_elapsed / descend_duration
+              self.rect.y = self.descend_start_y + progress * self.descend_distance
+          else:
+              self.rect.y = self.descend_start_y + self.descend_distance
+              self.phase = "done"
+
+      elif self.phase == "done":
+          self.rect.y = -1000
+
+  def draw(self, win, player, current_time):
+    win.blit(self.image, (self.rect.x ,self.rect.y))
+
+    self.attack(player, current_time)
 
 class Object(pygame.sprite.Sprite):
   def __init__(self, x, y, width, height, name=None):
@@ -206,10 +274,14 @@ class Platform(Object):
     self.can_teleport = can_teleport
 
 
-def draw(window, bg_image, player, objects, test_enemy):
+def draw(window, bg_image, player, objects, test_enemy, attacks, current_time):
+  attack = random.choice(attacks)
+
   window.blit(bg_image, (0, 0))
   test_enemy.draw(window)
+  test_enemy.attack(attack, current_time)
   player.draw(window, test_enemy, objects)
+  attack.draw(window, player, current_time)
 
   for obj in objects:
     obj.draw(window)
@@ -293,6 +365,9 @@ def main(window, paused_time_offset):
 
   player = Player(100, 100, 50, 50)
   test_enemy = Enemy(650, 100, 200, 300)
+  attacks = [
+    HandAttack(player, 150, 50, 100)
+  ]
 
   run = True
   while run:
@@ -357,7 +432,7 @@ def main(window, paused_time_offset):
     
     test_enemy.teleport(objects, current_time)
     handle_move(player, objects)
-    draw(window, bg_image, player, objects, test_enemy)
+    draw(window, bg_image, player, objects, test_enemy, attacks, current_time)
 
   pygame.quit()
   sys.exit()
