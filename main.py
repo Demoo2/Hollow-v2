@@ -145,7 +145,7 @@ class Player(pygame.sprite.Sprite):
 
 
 class Enemy(pygame.sprite.Sprite):
-  def __init__(self, x, y, width, height):
+  def __init__(self, x, y, width, height, hp):
     super().__init__()
     self.rect = pygame.Rect(x, y, width, height)
     self.image = pygame.Surface((width, height), pygame.SRCALPHA)
@@ -160,7 +160,9 @@ class Enemy(pygame.sprite.Sprite):
 
     self.last_attack = 0
 
-    self.hp = 500
+    self.boss_phase = 0
+    self.full_hp = hp
+    self.hp = hp
 
   def get_hit(self):
     self.hp -= 1
@@ -182,10 +184,12 @@ class Enemy(pygame.sprite.Sprite):
         self.last_teleport = current_time
     
   def next_attack_cooldown(self, current_time, attack):
-    return current_time - self.last_attack >= attack.after_attack_cooldown
+    return current_time - self.last_attack >= attack.after_attack_cooldown[self.boss_phase]
 
   def attack(self, attack, current_time):
     if self.next_attack_cooldown(current_time, attack):
+      if self.hp <= self.full_hp // 2:
+        self.boss_phase = 1
       attack.can_attack(current_time)
       self.last_attack = current_time
 
@@ -194,10 +198,10 @@ class Enemy(pygame.sprite.Sprite):
 
 
 class HandAttack(pygame.sprite.Sprite):
-  def __init__(self, player, width, height, offset):
+  def __init__(self, offset, width, height):
     super().__init__()
     self.image = pygame.Surface((width, height), pygame.SRCALPHA)
-    self.image.fill("red")
+    self.image.fill("yellow")
     self.rect = pygame.Rect(0, -1000, width, height)
     self.mask = pygame.mask.from_surface(self.image)
 
@@ -205,16 +209,15 @@ class HandAttack(pygame.sprite.Sprite):
     self.phase = "done"
     self.attack_start_time = 0
 
-    self.follow_duration = random.randint(1000, 1500)
+    self.follow_duration = random.randint(700, 1200)
     self.freeze_duration = 300
     self.descend_distance = 250
     self.descend_duration = 100
-    self.after_attack_cooldown = random.randint(5000, 7000)
+    self.after_attack_cooldown = [random.randint(5000, 7000), random.randint(4000, 6000)]
 
   def can_attack(self, current_time):
       self.attack_start_time = current_time
       self.phase = "follow"
-      return True
 
   def attack(self, player, current_time):
       elapsed = current_time - self.attack_start_time
@@ -251,6 +254,95 @@ class HandAttack(pygame.sprite.Sprite):
 
     self.attack(player, current_time)
 
+
+class GroundSpikeWhole(pygame.sprite.Sprite):
+  def __init__(self, margin, countSpikes, width, height):
+    self.image = pygame.Surface((width, height), pygame.SRCALPHA)
+    self.image.fill("yellow")
+    self.rect = pygame.Rect(margin, 60, width, height)
+
+    self.countSpikes = countSpikes
+    self.margin = margin
+    self.width = width
+    self.height = height
+
+    self.show_duration = 1000
+
+    self.phase = "done"
+    self.attack_start_time = 0
+
+    self.after_attack_cooldown = [random.randint(6000, 8000), random.randint(5000, 7000)]
+
+    self.spikes = []
+    self.grow_index = 0
+    self.grow_start_time = 0
+    self.grow_interval = 300
+    self.grow_duration = 100 + self.grow_interval
+    self.descend_interval = 80
+    self.descend_duration = 80 + self.descend_interval
+    self.grow_start_y = 0
+
+  def can_attack(self, current_time):
+    self.attack_start_time = current_time
+    self.phase = "show" 
+  
+  def attack(self, player, current_time):
+    elapsed = current_time - self.attack_start_time
+
+    if self.phase == "show":
+      if elapsed <= self.show_duration:
+        self.spikes = []
+        for i in range(self.countSpikes):
+          x = i * (self.width + self.margin)
+          y = self.height - (self.height - HEIGHT) - 60
+          spike_rect = pygame.Rect(x, y, self.width, self.height)
+          self.spikes.append(spike_rect)
+      else:
+        self.phase = "grow"
+        self.grow_index = 0
+        self.grow_start_y = self.spikes[0].y + 60
+        self.grow_start_time = current_time
+    
+    elif self.phase == "grow":
+      if self.grow_index < len(self.spikes):
+        grow_elapsed = current_time - self.grow_start_time
+        grow_duration = self.grow_duration
+        if grow_elapsed >= self.grow_interval:
+          spike = self.spikes[self.grow_index]
+          if grow_elapsed <= grow_duration:
+            progress = (grow_elapsed / grow_duration) ** 2
+            spike.y = self.grow_start_y - progress * self.height / 1.5
+          else:
+            self.spikes[self.grow_index] = spike
+            self.grow_index += 1
+            self.grow_start_time = current_time
+      else:
+        self.phase = "done"
+        self.grow_index = 0
+        self.grow_start_y = self.spikes[0].y
+        self.grow_start_time = current_time
+    
+    elif self.phase == "done":
+      if self.grow_index < len(self.spikes):
+        descend_elapsed = current_time - self.grow_start_time
+        descend_duration = self.descend_duration
+        if descend_elapsed >= self.descend_interval:
+          spike = self.spikes[self.grow_index]
+          if descend_elapsed <= descend_duration:
+            progress = (descend_elapsed / descend_duration) ** 2
+            spike.y = self.grow_start_y + progress * self.height / 1.4
+          else:
+            self.spikes[self.grow_index] = spike
+            self.grow_index += 1
+            self.grow_start_time = current_time
+
+
+  def draw(self, win, player, current_time):
+    for spike_rect in self.spikes:
+      win.blit(self.image, (spike_rect.x, spike_rect.y))
+    self.attack(player, current_time)
+
+
 class Object(pygame.sprite.Sprite):
   def __init__(self, x, y, width, height, name=None):
     super().__init__()
@@ -275,16 +367,16 @@ class Platform(Object):
 
 
 def draw(window, bg_image, player, objects, test_enemy, attacks, current_time):
-  attack = random.choice(attacks)
-
   window.blit(bg_image, (0, 0))
+
+  for attack in attacks:
+      attack.draw(window, player, current_time)
+
   test_enemy.draw(window)
-  test_enemy.attack(attack, current_time)
   player.draw(window, test_enemy, objects)
-  attack.draw(window, player, current_time)
 
   for obj in objects:
-    obj.draw(window)
+      obj.draw(window)
 
   pygame.display.update()
 
@@ -364,9 +456,10 @@ def main(window, paused_time_offset):
   ]
 
   player = Player(100, 100, 50, 50)
-  test_enemy = Enemy(650, 100, 200, 300)
+  test_enemy = Enemy(650, 100, 200, 300, 200)
   attacks = [
-    HandAttack(player, 150, 50, 100)
+    HandAttack(150, 200, 70),
+    GroundSpikeWhole(40, 6, 150, 1000)
   ]
 
   run = True
@@ -429,9 +522,15 @@ def main(window, paused_time_offset):
           player.start_dash(current_time)
     
     player.loop(FPS)
-    
     test_enemy.teleport(objects, current_time)
     handle_move(player, objects)
+
+    for attack in attacks:
+      attack.attack(player, current_time)
+
+    attack = random.choice(attacks)
+    test_enemy.attack(attack, current_time)
+
     draw(window, bg_image, player, objects, test_enemy, attacks, current_time)
 
   pygame.quit()
