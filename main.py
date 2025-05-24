@@ -82,17 +82,26 @@ class Player(pygame.sprite.Sprite):
 
   def use_dash(self, objects):
     if self.is_dashing and pygame.time.get_ticks() - self.dash_time < 120:
-      dash_distance = 22
-      dx = 1 if self.direction == "right" else -1
+      keys = pygame.key.get_pressed()
+      dash_distance = 5
+      dx = 5 if self.direction == "right" else -5
+      virtual_rect = pygame.Rect(self.rect.x - dx, self.rect.y, self.width, self.height)
       for _ in range(dash_distance):
-        self.rect.x += dx
+        virtual_rect.x += dx * 2
+        collided = False
         for obj in objects:
-          if pygame.sprite.collide_mask(self, obj):
-            self.rect.x -= dx
+          if virtual_rect.colliderect(obj):
             self.is_dashing = False
+            collided = True
             break
-        self.fall_count = 0
-        self.y_vel = 0
+        if not collided:
+          self.rect.x += dx
+          virtual_rect.x -= dx
+        else:
+          break
+
+      self.fall_count = 0
+      self.y_vel = 0
     else:
       self.is_dashing = False
 
@@ -376,7 +385,7 @@ def draw(window, bg_image, player, objects, test_enemy, attacks, current_time):
   player.draw(window, test_enemy, objects)
 
   for obj in objects:
-      obj.draw(window)
+    obj.draw(window)
 
   pygame.display.update()
 
@@ -418,9 +427,9 @@ def handle_move(player, objects):
   collide_left = collide(player, objects, -PLAYER_VEL)
   collide_right = collide(player, objects, PLAYER_VEL)
 
-  if keys[pygame.K_a] and not collide_left:
+  if keys[pygame.K_a] and not collide_left and not player.is_dashing:
     player.move_left(PLAYER_VEL)
-  if keys[pygame.K_d] and not collide_right:
+  if keys[pygame.K_d] and not collide_right and not player.is_dashing:
     player.move_right(PLAYER_VEL)
   if keys[pygame.K_SPACE]:
     player.continue_jump()
@@ -434,6 +443,7 @@ def handle_move(player, objects):
     player.rect.x = 0
   if player.rect.x > WIDTH - player.width:
     player.rect.x = WIDTH - player.width
+  
   handle_vertical_collision(player, objects, player.y_vel)
 
 
