@@ -23,6 +23,10 @@ class Player(pygame.sprite.Sprite):
     self.width = width
     self.height = height
 
+    self.hp = 5
+    self.invincible_cooldown = 1000
+    self.last_hit_time = 0
+
     self.x_vel = 0
     self.y_vel = 0
     self.direction = "left"
@@ -40,6 +44,11 @@ class Player(pygame.sprite.Sprite):
     self.is_jumping = False
     self.jump_start_time = 0
     self.max_jump_duration = 200
+
+  def get_hit(self):
+    if current_time - self.last_hit_time >= self.invincible_cooldown:
+      self.hp -= 1
+      self.last_hit_time = current_time
 
   def start_jump(self):
     if self.jump_count < 2 and ((self.fall_count < 10 and self.jump_count == 0) or self.jump_count == 1):
@@ -71,13 +80,13 @@ class Player(pygame.sprite.Sprite):
     if self.direction != "right":
       self.direction = "right"
   
-  def start_dash(self, current_time):
-    if self.dash_timer(current_time):
+  def start_dash(self):
+    if self.dash_timer():
       self.dash_time = pygame.time.get_ticks()
       self.is_dashing = True
       self.last_dash_time = current_time
 
-  def dash_timer(self, current_time):
+  def dash_timer(self):
     return current_time - self.last_dash_time >= self.dash_cooldown
 
   def use_dash(self, objects):
@@ -178,11 +187,11 @@ class Enemy(pygame.sprite.Sprite):
     if self.hp <= 0:
       self.image.fill("blue")
 
-  def teleport_timer(self, current_time):
+  def teleport_timer(self):
     return current_time - self.last_teleport >= self.teleport_cooldown
 
-  def teleport(self, objects, current_time):
-    if self.teleport_timer(current_time):
+  def teleport(self, objects):
+    if self.teleport_timer():
       object_number = random.randint(0, len(objects) - 1)
       obj = objects[object_number]
       if obj.can_teleport:
@@ -192,14 +201,14 @@ class Enemy(pygame.sprite.Sprite):
         self.rect.y = y
         self.last_teleport = current_time
     
-  def next_attack_cooldown(self, current_time, attack):
+  def next_attack_cooldown(self, attack):
     return current_time - self.last_attack >= attack.after_attack_cooldown[self.boss_phase]
 
-  def attack(self, attack, current_time):
-    if self.next_attack_cooldown(current_time, attack):
+  def attack(self, attack):
+    if self.next_attack_cooldown(attack):
       if self.hp <= self.full_hp // 2:
         self.boss_phase = 1
-      attack.can_attack(current_time)
+      attack.can_attack()
       self.last_attack = current_time
 
   def draw(self, win):
@@ -218,57 +227,59 @@ class HandAttack(pygame.sprite.Sprite):
     self.phase = "done"
     self.attack_start_time = 0
 
+    self.attacks_rect = []
     self.follow_duration = random.randint(700, 1200)
     self.freeze_duration = 300
     self.descend_distance = 250
     self.descend_duration = 100
     self.after_attack_cooldown = [random.randint(5000, 7000), random.randint(4000, 6000)]
 
-  def can_attack(self, current_time):
-      self.attack_start_time = current_time
-      self.phase = "follow"
+  def can_attack(self):
+    self.attack_start_time = current_time
+    self.phase = "follow"
 
-  def attack(self, player, current_time):
-      elapsed = current_time - self.attack_start_time
+  def attack(self, player):
+    elapsed = current_time - self.attack_start_time
 
-      if self.phase == "follow":
-          if elapsed <= self.follow_duration:
-              self.rect.x = player.rect.centerx - self.rect.width // 2
-              self.rect.y = player.rect.y - self.offset
-          else:
-              self.phase = "freeze"
-              self.freeze_start_time = current_time
+    if self.phase == "follow":
+      self.attacks_rect = []
+      if elapsed <= self.follow_duration:
+        self.rect.x = player.rect.centerx - self.rect.width // 2
+        self.rect.y = player.rect.y - self.offset
+        self.attacks_rect.append(self.rect)
+      else:
+        self.phase = "freeze"
+        self.freeze_start_time = current_time
 
-      elif self.phase == "freeze":
-          if current_time - self.freeze_start_time > self.freeze_duration:
-              self.phase = "descend"
-              self.descend_start_y = self.rect.y
-              self.descend_start_time = current_time
+    elif self.phase == "freeze":
+      if current_time - self.freeze_start_time > self.freeze_duration:
+        self.phase = "descend"
+        self.descend_start_y = self.rect.y
+        self.descend_start_time = current_time
 
-      elif self.phase == "descend":
-          descend_elapsed = current_time - self.descend_start_time
-          descend_duration = self.descend_duration
-          if descend_elapsed <= descend_duration:
-              progress = descend_elapsed / descend_duration
-              self.rect.y = self.descend_start_y + progress * self.descend_distance
-          else:
-              self.rect.y = self.descend_start_y + self.descend_distance
-              self.phase = "done"
+    elif self.phase == "descend":
+      descend_elapsed = current_time - self.descend_start_time
+      descend_duration = self.descend_duration
+      if descend_elapsed <= descend_duration:
+        progress = descend_elapsed / descend_duration
+        self.rect.y = self.descend_start_y + progress * self.descend_distance
+      else:
+        self.rect.y = self.descend_start_y + self.descend_distance
+        self.phase = "done"
 
-      elif self.phase == "done":
-          self.rect.y = -1000
+    elif self.phase == "done":
+      self.rect.y = -1000
 
-  def draw(self, win, player, current_time):
+  def draw(self, win, player):
     win.blit(self.image, (self.rect.x ,self.rect.y))
 
-    self.attack(player, current_time)
+    self.attack(player)
 
 
 class GroundSpikeWhole(pygame.sprite.Sprite):
   def __init__(self, margin, countSpikes, width, height):
     self.image = pygame.Surface((width, height), pygame.SRCALPHA)
     self.image.fill("yellow")
-    self.rect = pygame.Rect(margin, 60, width, height)
 
     self.countSpikes = countSpikes
     self.margin = margin
@@ -281,8 +292,9 @@ class GroundSpikeWhole(pygame.sprite.Sprite):
     self.attack_start_time = 0
 
     self.after_attack_cooldown = [random.randint(6000, 8000), random.randint(5000, 7000)]
+    self.choosed_side = ""
 
-    self.spikes = []
+    self.attacks_rect = []
     self.grow_index = 0
     self.grow_start_time = 0
     self.grow_interval = 300
@@ -291,65 +303,76 @@ class GroundSpikeWhole(pygame.sprite.Sprite):
     self.descend_duration = 80 + self.descend_interval
     self.grow_start_y = 0
 
-  def can_attack(self, current_time):
+  def can_attack(self):
     self.attack_start_time = current_time
     self.phase = "show" 
   
-  def attack(self, player, current_time):
+  def attack(self, player):
     elapsed = current_time - self.attack_start_time
+    player_x = player.rect.x
 
     if self.phase == "show":
       if elapsed <= self.show_duration:
-        self.spikes = []
+        self.attacks_rect = []
+
+        if player_x <= WIDTH // 2 and self.choosed_side == "":
+          self.choosed_side = "left"
+        elif player_x >= WIDTH // 2 and self.choosed_side == "":
+          self.choosed_side = "right"
+
         for i in range(self.countSpikes):
-          x = i * (self.width + self.margin)
+          if self.choosed_side == "left":
+            x = i * (self.width + self.margin)
+          elif self.choosed_side == "right":
+            x = WIDTH - (i+1) * (self.width + self.margin)
           y = self.height - (self.height - HEIGHT) - 60
           spike_rect = pygame.Rect(x, y, self.width, self.height)
-          self.spikes.append(spike_rect)
+          self.attacks_rect.append(spike_rect)
       else:
         self.phase = "grow"
         self.grow_index = 0
-        self.grow_start_y = self.spikes[0].y + 60
+        self.grow_start_y = self.attacks_rect[0].y + 60
         self.grow_start_time = current_time
     
     elif self.phase == "grow":
-      if self.grow_index < len(self.spikes):
+      if self.grow_index < len(self.attacks_rect):
         grow_elapsed = current_time - self.grow_start_time
         grow_duration = self.grow_duration
         if grow_elapsed >= self.grow_interval:
-          spike = self.spikes[self.grow_index]
+          spike = self.attacks_rect[self.grow_index]
           if grow_elapsed <= grow_duration:
             progress = (grow_elapsed / grow_duration) ** 2
             spike.y = self.grow_start_y - progress * self.height / 1.5
           else:
-            self.spikes[self.grow_index] = spike
+            self.attacks_rect[self.grow_index] = spike
             self.grow_index += 1
             self.grow_start_time = current_time
       else:
         self.phase = "done"
         self.grow_index = 0
-        self.grow_start_y = self.spikes[0].y
+        self.grow_start_y = self.attacks_rect[0].y
         self.grow_start_time = current_time
     
     elif self.phase == "done":
-      if self.grow_index < len(self.spikes):
+      self.choosed_side = ""
+      if self.grow_index < len(self.attacks_rect):
         descend_elapsed = current_time - self.grow_start_time
         descend_duration = self.descend_duration
         if descend_elapsed >= self.descend_interval:
-          spike = self.spikes[self.grow_index]
+          spike = self.attacks_rect[self.grow_index]
           if descend_elapsed <= descend_duration:
             progress = (descend_elapsed / descend_duration) ** 2
             spike.y = self.grow_start_y + progress * self.height / 1.4
           else:
-            self.spikes[self.grow_index] = spike
+            self.attacks_rect[self.grow_index] = spike
             self.grow_index += 1
             self.grow_start_time = current_time
 
 
-  def draw(self, win, player, current_time):
-    for spike_rect in self.spikes:
+  def draw(self, win, player):
+    for spike_rect in self.attacks_rect:
       win.blit(self.image, (spike_rect.x, spike_rect.y))
-    self.attack(player, current_time)
+    self.attack(player)
 
 
 class Object(pygame.sprite.Sprite):
@@ -375,11 +398,11 @@ class Platform(Object):
     self.can_teleport = can_teleport
 
 
-def draw(window, bg_image, player, objects, test_enemy, attacks, current_time):
+def draw(window, bg_image, player, objects, test_enemy, attacks):
   window.blit(bg_image, (0, 0))
 
   for attack in attacks:
-      attack.draw(window, player, current_time)
+      attack.draw(window, player)
 
   test_enemy.draw(window)
   player.draw(window, test_enemy, objects)
@@ -447,11 +470,23 @@ def handle_move(player, objects):
   handle_vertical_collision(player, objects, player.y_vel)
 
 
+def handle_enemy(player, enemy, attacks, objects):
+  enemy.teleport(objects)
+
+  for attack in attacks:
+    attack.attack(player)
+    for rect in attack.attacks_rect:
+      if rect.colliderect(player):
+        player.get_hit()
+  current_attack = random.choice(attacks)
+  enemy.attack(current_attack)
+
+
 def main(window, paused_time_offset):
   clock = pygame.time.Clock()
 
   bg_image = pygame.image.load("assets/brackground.webp").convert()
-  bg_image = pygame.transform.scale(bg_image, (1500, 800))
+  bg_image = pygame.transform.scale(bg_image, (WIDTH, HEIGHT))
 
   pause_menu = False
   pause_start_time = 0
@@ -468,13 +503,14 @@ def main(window, paused_time_offset):
   player = Player(100, 100, 50, 50)
   test_enemy = Enemy(650, 100, 200, 300, 200)
   attacks = [
-    HandAttack(150, 200, 70),
+    # HandAttack(150, 200, 70),
     GroundSpikeWhole(40, 6, 150, 1000)
   ]
 
   run = True
   while run:
     clock.tick(FPS)
+    global current_time 
     current_time = pygame.time.get_ticks() - paused_time_offset
 
     events = pygame.event.get()
@@ -529,19 +565,12 @@ def main(window, paused_time_offset):
         if event.key == pygame.K_j:
           player.start_hit()
         if event.key == pygame.K_LSHIFT:
-          player.start_dash(current_time)
+          player.start_dash()
     
     player.loop(FPS)
-    test_enemy.teleport(objects, current_time)
     handle_move(player, objects)
-
-    for attack in attacks:
-      attack.attack(player, current_time)
-
-    attack = random.choice(attacks)
-    test_enemy.attack(attack, current_time)
-
-    draw(window, bg_image, player, objects, test_enemy, attacks, current_time)
+    handle_enemy(player, test_enemy, attacks, objects)
+    draw(window, bg_image, player, objects, test_enemy, attacks)
 
   pygame.quit()
   sys.exit()
