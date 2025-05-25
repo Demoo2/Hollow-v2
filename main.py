@@ -325,7 +325,7 @@ class GroundSpikeWhole(pygame.sprite.Sprite):
             x = i * (self.width + self.margin)
           elif self.choosed_side == "right":
             x = WIDTH - (i+1) * (self.width + self.margin)
-          y = self.height - (self.height - HEIGHT) - 60
+          y = HEIGHT - 60
           spike_rect = pygame.Rect(x, y, self.width, self.height)
           self.attacks_rect.append(spike_rect)
       else:
@@ -368,7 +368,87 @@ class GroundSpikeWhole(pygame.sprite.Sprite):
             self.grow_index += 1
             self.grow_start_time = current_time
 
+  def draw(self, win, player):
+    for spike_rect in self.attacks_rect:
+      win.blit(self.image, (spike_rect.x, spike_rect.y))
+    self.attack(player)
 
+
+class GroundSpikeMargin(pygame.sprite.Sprite):
+  def __init__(self, spikeCount, height, repeat):
+    self.image = pygame.Surface((WIDTH // spikeCount, height), pygame.SRCALPHA)
+    self.image.fill("yellow")
+
+    self.spikeCount = spikeCount
+    self.width = WIDTH // spikeCount
+    self.height = height
+
+    self.phase = "idle"
+    self.attack_start_time = 0
+    self.after_attack_cooldown = [random.randint(9000, 11000), random.randint(8000, 10000)]
+
+    self.attacks_rect = [pygame.Rect(i * self.width, HEIGHT, self.width, self.height) for i in range(self.spikeCount)]
+    self.original_repeat = repeat
+    self.repeat = repeat
+    self.spikes = 0
+    self.grow_start_time = 0
+    self.grow_start_y = 0
+
+    self.grow_duration = 200
+    self.descend_duration = 100
+    self.freeze_duration = 200
+    self.show_duration = 600
+
+  def can_attack(self):
+    self.attack_start_time = current_time
+    self.phase = "show" 
+  
+  def attack(self, player):
+    elapsed = current_time - self.attack_start_time
+
+    if self.phase == "show":
+      if elapsed <= self.show_duration:
+        for rect in self.attacks_rect[self.spikes::2]:
+          rect.y = HEIGHT - 70
+      else:
+        self.phase = "grow"
+        self.grow_start_y = self.attacks_rect[0].y + 70
+        self.grow_start_time = current_time
+    
+    elif self.phase == "grow":
+      grow_elapsed = current_time - self.grow_start_time
+      grow_duration = self.grow_duration
+      if grow_elapsed <= grow_duration:
+        for rect in self.attacks_rect[self.spikes::2]:
+          progress = (grow_elapsed / grow_duration) ** 2
+          rect.y = self.grow_start_y - progress * self.height / 1.4
+      else:
+        self.phase = "freeze"
+        self.grow_start_time = current_time
+    
+    elif self.phase == "freeze":
+      if current_time - self.grow_start_time > self.freeze_duration:
+        self.phase = "done"
+        self.grow_start_y = self.attacks_rect[0].y
+        self.grow_start_time = current_time
+    
+    elif self.phase == "done":
+      descend_elapsed = current_time - self.grow_start_time
+      descend_duration = self.descend_duration
+      if descend_elapsed <= descend_duration:
+        for rect in self.attacks_rect[self.spikes::2]:
+          progress = (descend_elapsed / descend_duration) ** 2
+          rect.y = self.grow_start_y + progress * self.height / 1.2
+      else:
+        if self.repeat > 1:
+          self.spikes = 1 - self.spikes
+          self.repeat -= 1
+          self.phase = "show"
+          self.attack_start_time = current_time
+        else:
+          self.phase = "idle"
+          self.repeat = self.original_repeat
+    
   def draw(self, win, player):
     for spike_rect in self.attacks_rect:
       win.blit(self.image, (spike_rect.x, spike_rect.y))
@@ -504,7 +584,8 @@ def main(window, paused_time_offset):
   test_enemy = Enemy(650, 100, 200, 300, 200)
   attacks = [
     # HandAttack(150, 200, 70),
-    GroundSpikeWhole(40, 6, 150, 1000)
+    # GroundSpikeWhole(40, 6, 150, 1000),
+    GroundSpikeMargin(10, 1000, 3)
   ]
 
   run = True
