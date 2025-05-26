@@ -1,6 +1,8 @@
 import random, pygame, sys
 from button import Button
 
+GAME_OVER = False
+
 WIDTH, HEIGHT = 1500, 800
 FPS = 60
 PLAYER_VEL = 5
@@ -118,13 +120,13 @@ class Player(pygame.sprite.Sprite):
     self.hit_time = pygame.time.get_ticks()
     self.is_hitting = True
 
-  def hit(self, win, test_enemy):
+  def hit(self, win, test_enemy, movement):
     keys = pygame.key.get_pressed()
     if self.is_hitting and pygame.time.get_ticks() - self.hit_time < 100:
       hit_image = pygame.Surface((self.rect.width + 20, self.rect.height + 20), pygame.SRCALPHA)
       hit_image.fill((255, 0, 0, 100))
 
-      if keys[pygame.K_w]:
+      if keys[movement[0]]:
         hit_rect = pygame.Rect(self.rect.x - 10, self.rect.y - self.rect.height - 20, self.rect.width + 20, self.rect.height + 20)
       elif self.direction == "right":
         hit_rect = pygame.Rect(self.rect.x + self.rect.width, self.rect.y - 10, self.rect.width + 20, self.rect.height + 20) 
@@ -155,10 +157,10 @@ class Player(pygame.sprite.Sprite):
     self.y_vel *= -1
     self.is_jumping = False
 
-  def draw(self, win, test_enemy, objects):
+  def draw(self, win, test_enemy, objects, movement):
     win.blit(self.image, (self.rect.x, self.rect.y))
       
-    self.hit(win, test_enemy)
+    self.hit(win, test_enemy, movement)
     self.use_dash(objects)
 
 
@@ -227,6 +229,8 @@ class HandAttack(pygame.sprite.Sprite):
     self.phase = "done"
     self.attack_start_time = 0
 
+    self.can_hit = True
+
     self.attacks_rect = []
     self.follow_duration = random.randint(700, 1200)
     self.freeze_duration = 300
@@ -286,7 +290,7 @@ class GroundSpikeWhole(pygame.sprite.Sprite):
     self.width = width
     self.height = height
 
-    self.show_duration = 1000
+    self.show_duration = 800
 
     self.phase = "done"
     self.attack_start_time = 0
@@ -394,10 +398,10 @@ class GroundSpikeMargin(pygame.sprite.Sprite):
     self.grow_start_time = 0
     self.grow_start_y = 0
 
-    self.grow_duration = 200
-    self.descend_duration = 100
-    self.freeze_duration = 200
-    self.show_duration = 600
+    self.grow_duration = 140
+    self.descend_duration = 70
+    self.freeze_duration = 100
+    self.show_duration = 400
 
   def can_attack(self):
     self.attack_start_time = current_time
@@ -478,14 +482,14 @@ class Platform(Object):
     self.can_teleport = can_teleport
 
 
-def draw(window, bg_image, player, objects, test_enemy, attacks):
+def draw(window, bg_image, player, objects, test_enemy, attacks, movement):
   window.blit(bg_image, (0, 0))
 
   for attack in attacks:
       attack.draw(window, player)
 
   test_enemy.draw(window)
-  player.draw(window, test_enemy, objects)
+  player.draw(window, test_enemy, objects, movement)
 
   for obj in objects:
     obj.draw(window)
@@ -523,25 +527,27 @@ def collide(player, objects, dx):
   return collided_object
 
 
-def handle_move(player, objects):
+def handle_move(player, objects, movement):
   keys = pygame.key.get_pressed()
 
   player.x_vel = 0
   collide_left = collide(player, objects, -PLAYER_VEL)
   collide_right = collide(player, objects, PLAYER_VEL)
 
-  if keys[pygame.K_a] and not collide_left and not player.is_dashing:
+  if keys[movement[1]] and not collide_left and not player.is_dashing:
     player.move_left(PLAYER_VEL)
-  if keys[pygame.K_d] and not collide_right and not player.is_dashing:
+  if keys[movement[2]] and not collide_right and not player.is_dashing:
     player.move_right(PLAYER_VEL)
-  if keys[pygame.K_SPACE]:
+  if keys[movement[3]]:
     player.continue_jump()
   else:
     player.is_jumping = False
 
-  if player.rect.y > HEIGHT - 50:
-    player.rect.y = HEIGHT - 50 
-    # Nechapem preco ma to clipuje pod objekty ale tak tento if statement aspon zaisti ze nevypadnem z mapy
+  if player.rect.y > HEIGHT:
+    choosen_object = objects[random.randint(0, len(objects) - 1)]
+    player.rect.y = choosen_object.rect.y
+    player.rect.x = choosen_object.rect.x + (choosen_object.rect.width / 2) - (player.rect.width / 2)
+    player.get_hit()
   if player.rect.x < 0:
     player.rect.x = 0
   if player.rect.x > WIDTH - player.width:
@@ -562,7 +568,7 @@ def handle_enemy(player, enemy, attacks, objects):
   enemy.attack(current_attack)
 
 
-def main(window, paused_time_offset):
+def main(window, paused_time_offset, movement):
   clock = pygame.time.Clock()
 
   bg_image = pygame.image.load("assets/brackground.webp").convert()
@@ -571,13 +577,21 @@ def main(window, paused_time_offset):
   pause_menu = False
   pause_start_time = 0
 
-  floor = Platform(0, HEIGHT - 50, WIDTH, 50)
   objects = [
-    floor, 
-    Platform(110, 450, 100, 50, can_teleport=True),
-    Platform(620, 400, 100, 50, can_teleport=True),
-    Platform(1310, 560, 100, 50, can_teleport=True),
-    Platform(860, 600, 100, 50, can_teleport=True)
+    # Left side
+    Platform(170, 650, 160, 50, can_teleport=True),
+    Platform(370, 500, 100, 50, can_teleport=True),
+    Platform(140, 330, 130, 50, can_teleport=True),
+
+    # Middle
+    Platform(680, 620, 140, 50, can_teleport=True),
+    Platform(570, 400, 120, 50, can_teleport=True),
+    Platform(870, 330, 130, 50, can_teleport=True),
+
+    # Right side
+    Platform(930, 550, 130, 50, can_teleport=True),
+    Platform(1170, 430, 110, 50, can_teleport=True),
+    Platform(1280, 660, 150, 50, can_teleport=True)
   ]
 
   player = Player(100, 100, 50, 50)
@@ -587,6 +601,34 @@ def main(window, paused_time_offset):
     # GroundSpikeWhole(40, 6, 150, 1000),
     GroundSpikeMargin(10, 1000, 3)
   ]
+
+  def game_over_screen(victory):
+    GAME_OVER = True
+    while GAME_OVER:
+      window.fill((0, 0, 0))
+      game_over_text = get_font_cinzel(60).render("Game Over", True, (255, 0, 0))
+      game_over_rect = game_over_text.get_rect(center=(WIDTH // 2, 200))
+      window.blit(game_over_text, game_over_rect)
+
+      play_again_button = Button(image=None, pos=(WIDTH // 2, 350), text_input="Play Again", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
+      main_menu_button = Button(image=None, pos=(WIDTH // 2, 420), text_input="Main Menu", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
+
+      mouse_pos = pygame.mouse.get_pos()
+      for button in [play_again_button, main_menu_button]:
+        button.changeColor(mouse_pos)
+        button.update(window)
+
+      pygame.display.update()
+
+      for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+          pygame.quit()
+          sys.exit()
+        if event.type == pygame.MOUSEBUTTONDOWN:
+          if play_again_button.checkForInput(mouse_pos):
+            main(window, paused_time_offset=current_time)
+          if main_menu_button.checkForInput(mouse_pos):
+            main_menu(window, movement)
 
   run = True
   while run:
@@ -612,8 +654,8 @@ def main(window, paused_time_offset):
       text_rect = text.get_rect(center=(WIDTH // 2, 280))
       window.blit(text, text_rect)
 
-      continue_game_button = Button(image=None, pos=(WIDTH // 2, 380), text_input="Continue", font=get_font_cinzel(40), base_color="White", hovering_color="#FAFAF5")
-      quit_game_button = Button(image=None, pos=(WIDTH // 2, 440), text_input="Quit Game", font=get_font_cinzel(40), base_color="White", hovering_color="#FAFAF5")
+      continue_game_button = Button(image=None, pos=(WIDTH // 2, 380), text_input="Continue", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
+      quit_game_button = Button(image=None, pos=(WIDTH // 2, 440), text_input="Quit Game", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
 
       for button in [continue_game_button, quit_game_button]:
         button.changeColor(menu_mouse_pos)
@@ -641,24 +683,120 @@ def main(window, paused_time_offset):
           pause_menu = True
           pause_start_time = pygame.time.get_ticks()
 
-        if event.key == pygame.K_SPACE:
+        if event.key == movement[3]:
           player.start_jump()
-        if event.key == pygame.K_j:
+        if event.key == movement[5]:
           player.start_hit()
-        if event.key == pygame.K_LSHIFT:
+        if event.key == movement[4]:
           player.start_dash()
     
     player.loop(FPS)
-    handle_move(player, objects)
+    handle_move(player, objects, movement)
     handle_enemy(player, test_enemy, attacks, objects)
-    draw(window, bg_image, player, objects, test_enemy, attacks)
+
+    if player.hp <= 0:
+      game_over_screen(False)
+    elif test_enemy.hp <= 0:
+      game_over_screen(True)
+
+    draw(window, bg_image, player, objects, test_enemy, attacks, movement)
 
   pygame.quit()
   sys.exit()
 
 
+####################### MAIN MENU ###########################
+
+
+def options(bg_menu, movement):
+  while True:
+    options_mouse_pos = pygame.mouse.get_pos()
+
+    window.blit(bg_menu, (0, 0))
+
+    options_text = get_font_cinzel(70).render("Option Menu", True, "white")
+    options_rect = options_text.get_rect(center=(WIDTH // 2, 200))
+    window.blit(options_text, options_rect)
+
+    texts = [
+      f"{"Arrow up" if movement[0] == pygame.K_UP else "W"}: look up",
+      f"{"Arrow left" if movement[1] == pygame.K_LEFT else "A"}: left",
+      f"{"Arrow right" if movement[2] == pygame.K_RIGHT else "D"}: right",
+      f"{"Z" if movement[3] == pygame.K_z else "SPACE"}: jump",
+      f"{"C" if movement[4] == pygame.K_c else "LEFT SHIFT"}: dash",
+      f"{"X" if movement[5] == pygame.K_x else "J"}: hit"
+    ]
+    for i in range(len(texts)):
+      key_text = get_font_cinzel(30).render(texts[i], True, "white")
+      key_rect = key_text.get_rect(center=(WIDTH // 2, 300 + i * 40))
+      window.blit(key_text, key_rect)
+
+    change_keybinds = Button(image=None, pos=(WIDTH // 2, 560), text_input="Change Keybinds", font=get_font_cinzel(40), base_color="white", hovering_color="Gray")
+    options_back = Button(image=None, pos=(WIDTH // 2, 620), text_input="Back", font=get_font_cinzel(40), base_color="white", hovering_color="Gray")
+
+    for button in [change_keybinds, options_back]:
+      button.changeColor(options_mouse_pos)
+      button.update(window)
+
+    for event in pygame.event.get():
+      if event.type == pygame.QUIT:
+        pygame.quit()
+        sys.exit()
+      if event.type == pygame.MOUSEBUTTONDOWN:
+        if options_back.checkForInput(options_mouse_pos):
+          main_menu(window, movement)
+        if change_keybinds.checkForInput(options_mouse_pos):
+          hollow_key = [pygame.K_UP, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_z, pygame.K_c, pygame.K_x]
+          sols_key = [pygame.K_w, pygame.K_a, pygame.K_d, pygame.K_SPACE, pygame.K_LSHIFT, pygame.K_j]
+          movement = sols_key if movement == hollow_key else hollow_key
+    
+    pygame.display.update()
+
+def main_menu(window, movement):
+  bg_menu = pygame.image.load("assets/MenuBackgroundVoid.jpg")
+  bg_menu = pygame.transform.scale(bg_menu, (WIDTH, HEIGHT))
+
+  while True:
+    if 'current_time' in globals():
+      start_time = current_time
+    else:
+      start_time = pygame.time.get_ticks()
+    window.blit(bg_menu, (0, 0))
+
+    menu_mouse_pos = pygame.mouse.get_pos()
+
+    menu_text = get_font_cinzel(100).render("Hollow v2", True, "white")
+    menu_rect = menu_text.get_rect(center=(WIDTH // 2, 200))
+
+    play_button = Button(image=None, pos=(WIDTH // 2, 400), text_input="Play Game", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
+    options_button = Button(image=None, pos=(WIDTH // 2, 460), text_input="Options", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
+    quit_button= Button(image=None, pos=(WIDTH // 2, 520), text_input="Quit Game", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
+
+    window.blit(menu_text, menu_rect)
+
+    for button in [play_button, options_button, quit_button]:
+      button.changeColor(menu_mouse_pos)
+      button.update(window)
+        
+    for event in pygame.event.get():
+      if event.type == pygame.QUIT:
+        pygame.quit()
+        sys.exit()
+      if event.type == pygame.MOUSEBUTTONDOWN:
+        if play_button.checkForInput(menu_mouse_pos):
+          main(window, start_time, movement)
+        if options_button.checkForInput(menu_mouse_pos):
+          options(bg_menu, movement)
+        if quit_button.checkForInput(menu_mouse_pos):
+          pygame.quit()
+          sys.exit()
+
+    pygame.display.update()
+
+
 if __name__ == "__main__":
+  movement=[pygame.K_UP, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_z, pygame.K_c, pygame.K_x]
   pygame.init()
   window = pygame.display.set_mode((WIDTH, HEIGHT))
   pygame.display.set_caption("Hollow v2")
-  main(window, paused_time_offset=0)
+  main_menu(window, movement)
