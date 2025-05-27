@@ -604,14 +604,30 @@ def main(window, paused_time_offset, movement):
 
   def game_over_screen(victory):
     GAME_OVER = True
+    score = current_time // 1000
     while GAME_OVER:
+      game_over_screen = pygame.time.get_ticks()
       window.fill((0, 0, 0))
       game_over_text = get_font_cinzel(60).render("Game Over", True, (255, 0, 0))
       game_over_rect = game_over_text.get_rect(center=(WIDTH // 2, 200))
-      window.blit(game_over_text, game_over_rect)
 
-      play_again_button = Button(image=None, pos=(WIDTH // 2, 350), text_input="Play Again", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
-      main_menu_button = Button(image=None, pos=(WIDTH // 2, 420), text_input="Main Menu", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
+      if victory:
+        score_text = get_font_cinzel(40).render(f"Time spend: {score}", True, (255, 0, 0))
+        score_rect = score_text.get_rect(center=(WIDTH // 2, 350))
+        window.blit(score_text, score_rect)
+        print(game_over_screen)
+
+        with open("bestscore.txt", "a", encoding="utf-8") as f:
+          # Sprav tu nech to zapisuje najlepsie skore
+          # Najlepsie skore je to ktore je mensie
+          # Skore je podla toho ako dlho zabijas bossa cim skor tym lepsie
+          pass
+
+      play_again_button = Button(image=None, pos=(WIDTH // 2, 410), text_input="Play Again", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
+      main_menu_button = Button(image=None, pos=(WIDTH // 2, 470), text_input="Main Menu", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
+
+      for i in [[game_over_text, game_over_rect]]:
+        window.blit(i[0], i[1])
 
       mouse_pos = pygame.mouse.get_pos()
       for button in [play_again_button, main_menu_button]:
@@ -626,7 +642,7 @@ def main(window, paused_time_offset, movement):
           sys.exit()
         if event.type == pygame.MOUSEBUTTONDOWN:
           if play_again_button.checkForInput(mouse_pos):
-            main(window, paused_time_offset=current_time)
+            main(window, game_over_screen, movement)
           if main_menu_button.checkForInput(mouse_pos):
             main_menu(window, movement)
 
@@ -757,10 +773,7 @@ def main_menu(window, movement):
   bg_menu = pygame.transform.scale(bg_menu, (WIDTH, HEIGHT))
 
   while True:
-    if 'current_time' in globals():
-      start_time = current_time
-    else:
-      start_time = pygame.time.get_ticks()
+    start_time = pygame.time.get_ticks()
     window.blit(bg_menu, (0, 0))
 
     menu_mouse_pos = pygame.mouse.get_pos()
