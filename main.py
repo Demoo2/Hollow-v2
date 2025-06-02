@@ -2,11 +2,16 @@ import random, pygame, sys
 from button import Button
 
 GAME_OVER = False
+pygame.mixer.init()
 
 WIDTH, HEIGHT = 1500, 800
 FPS = 60
 PLAYER_VEL = 5
 
+hit_sfx = pygame.mixer.Sound("assets/Sounds/PlayerAttack.wav")
+dash_sfx = pygame.mixer.Sound("assets/Sounds/PlayerDash.wav")
+death_sfx = pygame.mixer.Sound("assets/Sounds/PlayerDeath.wav")
+jump_sfx = pygame.mixer.Sound("assets/Sounds/PlayerJump.wav")
 
 def get_font_cinzel(size):
   return pygame.font.Font("assets/Cinzel.ttf", size)
@@ -26,7 +31,7 @@ class Player(pygame.sprite.Sprite):
     self.height = height
 
     self.hp = 5
-    self.invincible_cooldown = 1000
+    self.invincible_cooldown = 2000
     self.last_hit_time = 0
 
     self.x_vel = 0
@@ -49,12 +54,16 @@ class Player(pygame.sprite.Sprite):
 
   def get_hit(self):
     if current_time - self.last_hit_time >= self.invincible_cooldown:
+      death_sfx.play()
       self.hp -= 1
       self.last_hit_time = current_time
+    else:
+      death_sfx.stop()
 
   def start_jump(self):
     if self.jump_count < 2 and ((self.fall_count < 10 and self.jump_count == 0) or self.jump_count == 1):
       self.is_jumping = True
+      jump_sfx.play()
       self.jump_start_time = pygame.time.get_ticks()
       self.jump_count += 1
       if self.jump_count == 1:
@@ -67,6 +76,7 @@ class Player(pygame.sprite.Sprite):
         self.y_vel = -self.GRAVITY * 6
       else:
         self.is_jumping = False
+        jump_sfx.stop()
 
   def move(self, dx, dy):
     self.rect.x += dx
@@ -93,6 +103,7 @@ class Player(pygame.sprite.Sprite):
 
   def use_dash(self, objects):
     if self.is_dashing and pygame.time.get_ticks() - self.dash_time < 120:
+      dash_sfx.play()
       keys = pygame.key.get_pressed()
       dash_distance = 5
       dx = 5 if self.direction == "right" else -5
@@ -104,11 +115,13 @@ class Player(pygame.sprite.Sprite):
           if virtual_rect.colliderect(obj):
             self.is_dashing = False
             collided = True
+            dash_sfx.stop()
             break
         if not collided:
           self.rect.x += dx
           virtual_rect.x -= dx
         else:
+          dash_sfx.stop()
           break
 
       self.fall_count = 0
@@ -133,11 +146,13 @@ class Player(pygame.sprite.Sprite):
       else:
         hit_rect = pygame.Rect(self.rect.x - self.rect.width - 20, self.rect.y - 10, self.rect.width + 20, self.rect.height + 20)
       
+      hit_sfx.play()
       win.blit(hit_image, hit_rect)
 
       if hit_rect.colliderect(test_enemy.rect):
         test_enemy.get_hit()
     else:
+      hit_sfx.stop()
       self.is_hitting = False
 
   def loop(self, fps):
@@ -157,9 +172,17 @@ class Player(pygame.sprite.Sprite):
     self.y_vel *= -1
     self.is_jumping = False
 
+  def health_bar(self, win):
+    hearth = pygame.Surface((40, 40))
+    hearth.fill("red")
+    for i in range(self.hp):
+      hearth_rect = hearth.get_rect(center = ((i + 1) * 60, 50))
+      win.blit(hearth, hearth_rect)
+
   def draw(self, win, test_enemy, objects, movement):
     win.blit(self.image, (self.rect.x, self.rect.y))
-      
+
+    self.health_bar(win)  
     self.hit(win, test_enemy, movement)
     self.use_dash(objects)
 
@@ -213,7 +236,14 @@ class Enemy(pygame.sprite.Sprite):
       attack.can_attack()
       self.last_attack = current_time
 
+  def health_bar(self, win):
+    percentage = self.hp / self.full_hp * 100
+    healthbar = pygame.Surface((6 * percentage, 50))
+    healthbar.fill("red")
+    win.blit(healthbar, (450, HEIGHT - 70))
+
   def draw(self, win):
+    self.health_bar(win)
     win.blit(self.image, (self.rect.x, self.rect.y))
 
 
@@ -571,6 +601,8 @@ def handle_enemy(player, enemy, attacks, objects):
 def main(window, paused_time_offset, movement):
   clock = pygame.time.Clock()
 
+  game_music_onoff = "on"
+
   bg_image = pygame.image.load("assets/brackground.webp").convert()
   bg_image = pygame.transform.scale(bg_image, (WIDTH, HEIGHT))
 
@@ -598,8 +630,8 @@ def main(window, paused_time_offset, movement):
   test_enemy = Enemy(650, 100, 200, 300, 200)
   attacks = [
     # HandAttack(150, 200, 70),
-    # GroundSpikeWhole(40, 6, 150, 1000),
-    GroundSpikeMargin(10, 1000, 3)
+    GroundSpikeWhole(40, 6, 150, 1000),
+    # GroundSpikeMargin(10, 1000, 3)
   ]
 
   def game_over_screen(victory):
@@ -652,6 +684,11 @@ def main(window, paused_time_offset, movement):
     global current_time 
     current_time = pygame.time.get_ticks() - paused_time_offset
 
+    if game_music_onoff == "on":
+      pass
+    else:
+      pass
+
     events = pygame.event.get()
     for event in events:
       if event.type == pygame.QUIT:
@@ -672,8 +709,9 @@ def main(window, paused_time_offset, movement):
 
       continue_game_button = Button(image=None, pos=(WIDTH // 2, 380), text_input="Continue", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
       quit_game_button = Button(image=None, pos=(WIDTH // 2, 440), text_input="Quit Game", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
+      music_onoff_button = Button(image=None, pos=(WIDTH // 2, 500), text_input="Music {game_music_onoff}", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
 
-      for button in [continue_game_button, quit_game_button]:
+      for button in [continue_game_button, quit_game_button, music_onoff_button]:
         button.changeColor(menu_mouse_pos)
         button.update(window)
 
@@ -686,6 +724,8 @@ def main(window, paused_time_offset, movement):
           if quit_game_button.checkForInput(menu_mouse_pos):
             run = False
             break
+          if music_onoff_button.checkForInput(menu_mouse_pos):
+            game_music_onoff = "off"
         
         if event.type == pygame.KEYDOWN:
           if event.key == pygame.K_ESCAPE:
