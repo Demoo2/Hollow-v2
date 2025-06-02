@@ -735,12 +735,12 @@ def options(bg_menu, movement):
     window.blit(options_text, options_rect)
 
     texts = [
-      f"{"Arrow up" if movement[0] == pygame.K_UP else "W"}: look up",
-      f"{"Arrow left" if movement[1] == pygame.K_LEFT else "A"}: left",
-      f"{"Arrow right" if movement[2] == pygame.K_RIGHT else "D"}: right",
-      f"{"Z" if movement[3] == pygame.K_z else "SPACE"}: jump",
-      f"{"C" if movement[4] == pygame.K_c else "LEFT SHIFT"}: dash",
-      f"{"X" if movement[5] == pygame.K_x else "J"}: hit"
+      f'{"Arrow up" if movement[0] == pygame.K_UP else "W"}: look up',
+      f'{"Arrow left" if movement[1] == pygame.K_LEFT else "A"}: left',
+      f'{"Arrow right" if movement[2] == pygame.K_RIGHT else "D"}: right',
+      f'{"Z" if movement[3] == pygame.K_z else "SPACE"}: jump',
+      f'{"C" if movement[4] == pygame.K_c else "LEFT SHIFT"}: dash',
+      f'{"X" if movement[5] == pygame.K_x else "J"}: hit'
     ]
     for i in range(len(texts)):
       key_text = get_font_cinzel(30).render(texts[i], True, "white")
