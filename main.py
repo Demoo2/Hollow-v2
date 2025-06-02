@@ -525,6 +525,8 @@ def draw(window, bg_image, player, objects, test_enemy, attacks, movement):
 
   for obj in objects:
     obj.draw(window)
+    
+  
 
   pygame.display.update()
 
@@ -639,6 +641,7 @@ def main(window, paused_time_offset, movement):
   def game_over_screen(victory):
     GAME_OVER = True
     score = current_time // 1000
+    zapisData = True
     while GAME_OVER:
       game_over_screen = pygame.time.get_ticks()
       window.fill((0, 0, 0))
@@ -650,12 +653,17 @@ def main(window, paused_time_offset, movement):
         score_rect = score_text.get_rect(center=(WIDTH // 2, 350))
         window.blit(score_text, score_rect)
         print(game_over_screen)
-
-        with open("bestscore.txt", "a", encoding="utf-8") as f:
-          # Sprav tu nech to zapisuje najlepsie skore
-          # Najlepsie skore je to ktore je mensie
-          # Skore je podla toho ako dlho zabijas bossa cim skor tym lepsie
-          pass
+        
+        if zapisData:
+          with open("bestscore.txt", "r", encoding="utf-8") as f:
+            vstup = f.read().splitlines()
+      
+          with open("bestscore.txt", "w", encoding="utf-8") as z:
+            if score < int(vstup[0]):
+              z.write(str(score))
+            else:
+              pass
+          zapisData = False
 
       play_again_button = Button(image=None, pos=(WIDTH // 2, 410), text_input="Play Again", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
       main_menu_button = Button(image=None, pos=(WIDTH // 2, 470), text_input="Main Menu", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
