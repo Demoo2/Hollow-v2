@@ -8,6 +8,8 @@ WIDTH, HEIGHT = 1500, 800
 FPS = 60
 PLAYER_VEL = 5
 
+game_sound = pygame.mixer.Sound("assets/Sounds/gameSong.mp3")
+
 hit_sfx = pygame.mixer.Sound("assets/Sounds/PlayerAttack.wav")
 dash_sfx = pygame.mixer.Sound("assets/Sounds/PlayerDash.wav")
 death_sfx = pygame.mixer.Sound("assets/Sounds/PlayerDeath.wav")
@@ -685,9 +687,9 @@ def main(window, paused_time_offset, movement):
     current_time = pygame.time.get_ticks() - paused_time_offset
 
     if game_music_onoff == "on":
-      pass
+      game_sound.play()
     else:
-      pass
+      game_sound.stop()
 
     events = pygame.event.get()
     for event in events:
@@ -709,7 +711,7 @@ def main(window, paused_time_offset, movement):
 
       continue_game_button = Button(image=None, pos=(WIDTH // 2, 380), text_input="Continue", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
       quit_game_button = Button(image=None, pos=(WIDTH // 2, 440), text_input="Quit Game", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
-      music_onoff_button = Button(image=None, pos=(WIDTH // 2, 500), text_input="Music {game_music_onoff}", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
+      music_onoff_button = Button(image=None, pos=(WIDTH // 2, 500), text_input=f"Music {game_music_onoff}", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
 
       for button in [continue_game_button, quit_game_button, music_onoff_button]:
         button.changeColor(menu_mouse_pos)
