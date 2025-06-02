@@ -800,6 +800,10 @@ def options(bg_menu, movement):
     change_keybinds = Button(image=None, pos=(WIDTH // 2, 560), text_input="Change Keybinds", font=get_font_cinzel(40), base_color="white", hovering_color="Gray")
     options_back = Button(image=None, pos=(WIDTH // 2, 620), text_input="Back", font=get_font_cinzel(40), base_color="white", hovering_color="Gray")
 
+    objective_text = get_font_cinzel(25).render("Objective: Kill as fast as you can", True, "white")
+    objective_rect = objective_text.get_rect(center=(WIDTH // 2, 750))
+    window.blit(objective_text, objective_rect)
+
     for button in [change_keybinds, options_back]:
       button.changeColor(options_mouse_pos)
       button.update(window)
@@ -836,6 +840,13 @@ def main_menu(window, movement):
     quit_button= Button(image=None, pos=(WIDTH // 2, 520), text_input="Quit Game", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
 
     window.blit(menu_text, menu_rect)
+    
+    with open("bestscore.txt", "r", encoding="utf-8") as f:
+      vstup = f.read().splitlines()
+      
+    best_score_text = get_font_cinzel(25).render(f"Best time: {vstup[0]}", True, "red")
+    best_score_rect = best_score_text.get_rect(center=(150, 750))
+    window.blit(best_score_text, best_score_rect)
 
     for button in [play_button, options_button, quit_button]:
       button.changeColor(menu_mouse_pos)
