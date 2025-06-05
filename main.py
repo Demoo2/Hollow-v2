@@ -872,8 +872,6 @@ def main_menu(window, movement):
         if options_button.checkForInput(menu_mouse_pos):
           options(bg_menu, movement)
         if quit_button.checkForInput(menu_mouse_pos):
-          with open("bestscore.txt", "w", encoding="utf-8") as z:
-              z.write(str(1000))
           pygame.quit()
           sys.exit()
 
@@ -883,6 +881,11 @@ def main_menu(window, movement):
 if __name__ == "__main__":
   movement=[pygame.K_UP, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_z, pygame.K_c, pygame.K_x]
   pygame.init()
+  with open("bestscore.txt", "r", encoding="utf-8") as f:
+    vstup = f.read().splitlines()
+  if vstup == []:
+    with open("bestscore.txt", "w", encoding="utf-8") as z:
+      z.write(str(1000))
   window = pygame.display.set_mode((WIDTH, HEIGHT))
   pygame.display.set_caption("Hollow v2")
   main_menu(window, movement)
