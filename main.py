@@ -202,7 +202,7 @@ class Enemy(pygame.sprite.Sprite):
     self.last_attack = 0
 
     self.boss_phase = 0
-    self.full_hp = hp
+    self.full_hp = 1000
     self.hp = hp
 
   def get_hit(self):
@@ -588,8 +588,8 @@ def handle_enemy(player, enemy, attacks, objects):
     for rect in attack.attacks_rect:
       if rect.colliderect(player):
         player.get_hit()
-  current_attack = random.choice(attacks)
-  enemy.attack(current_attack)
+
+  enemy.attack(attacks)
 
   enemy.attack(attacks)
 
@@ -634,11 +634,11 @@ def main(window, paused_time_offset, movement, continue_game):
         }, indent=2)))
   else:
     player = Player(100, 100, 50, 50, 5)
-    test_enemy = Enemy(650, 100, 200, 300, 200)
+    test_enemy = Enemy(650, 100, 200, 300, 1000)
   attacks = [
-    #  HandAttack(150, 200, 70),
-    # GroundSpikeWhole(40, 6, 150, 1000),
-     GroundSpikeMargin(10, 1000, 3)
+    HandAttack(150, 200, 70),
+    GroundSpikeWhole(40, 6, 150, 1000),
+    GroundSpikeMargin(10, 1000, 3)
   ]
 
   def game_over_screen(victory):
@@ -655,7 +655,6 @@ def main(window, paused_time_offset, movement, continue_game):
         score_text = get_font_cinzel(40).render(f"Time spend: {score}", True, (255, 0, 0))
         score_rect = score_text.get_rect(center=(WIDTH // 2, 350))
         window.blit(score_text, score_rect)
-        print(game_over_screen)
         
         if zapisData:
           with open("bestscore.txt", "r", encoding="utf-8") as f:
