@@ -1,4 +1,4 @@
-import random, pygame, sys
+import random, pygame, sys, json
 from button import Button
 
 GAME_OVER = False
@@ -22,7 +22,7 @@ def get_font_cinzel(size):
 class Player(pygame.sprite.Sprite):
   GRAVITY = 1.2
 
-  def __init__(self, x, y, width, height):
+  def __init__(self, x, y, width, height, hp):
     super().__init__()
     self.rect = pygame.Rect(x, y, width, height)
     self.image = pygame.Surface((width, height), pygame.SRCALPHA)
@@ -32,7 +32,7 @@ class Player(pygame.sprite.Sprite):
     self.width = width
     self.height = height
 
-    self.hp = 5
+    self.hp = hp
     self.invincible_cooldown = 2000
     self.last_hit_time = 0
 
@@ -602,7 +602,7 @@ def handle_enemy(player, enemy, attacks, objects):
   enemy.attack(current_attack)
 
 
-def main(window, paused_time_offset, movement):
+def main(window, paused_time_offset, movement, continue_game):
   clock = pygame.time.Clock()
 
   game_music_onoff = "on"
@@ -630,12 +630,23 @@ def main(window, paused_time_offset, movement):
     Platform(1280, 660, 150, 50, can_teleport=True)
   ]
 
-  player = Player(100, 100, 50, 50)
-  test_enemy = Enemy(650, 100, 200, 300, 200)
+  if continue_game:
+    hps = json.load(open('savedGame.json', encoding="utf-8"))
+    player = Player(100, 100, 50, 50, hps["player"])
+    test_enemy = Enemy(650, 100, 200, 300, hps["test_enemy"])
+    with open("savedGame.json", 'w', encoding="utf-8") as subor:
+      subor.write(str(json.dumps(
+        {
+          "test_enemy": 1000,
+          "player": 5
+        }, indent=2)))
+  else:
+    player = Player(100, 100, 50, 50, 5)
+    test_enemy = Enemy(650, 100, 200, 300, 200)
   attacks = [
-    # HandAttack(150, 200, 70),
-    GroundSpikeWhole(40, 6, 150, 1000),
-    # GroundSpikeMargin(10, 1000, 3)
+    #  HandAttack(150, 200, 70),
+    # GroundSpikeWhole(40, 6, 150, 1000),
+     GroundSpikeMargin(10, 1000, 3)
   ]
 
   def game_over_screen(victory):
@@ -684,7 +695,7 @@ def main(window, paused_time_offset, movement):
           sys.exit()
         if event.type == pygame.MOUSEBUTTONDOWN:
           if play_again_button.checkForInput(mouse_pos):
-            main(window, game_over_screen, movement)
+            main(window, game_over_screen, movement, False)
           if main_menu_button.checkForInput(mouse_pos):
             main_menu(window, movement)
 
@@ -718,10 +729,10 @@ def main(window, paused_time_offset, movement):
       window.blit(text, text_rect)
 
       continue_game_button = Button(image=None, pos=(WIDTH // 2, 380), text_input="Continue", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
-      quit_game_button = Button(image=None, pos=(WIDTH // 2, 440), text_input="Quit Game", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
+      saveAndQuit_game_button = Button(image=None, pos=(WIDTH // 2, 440), text_input="Save and Quit Game", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
       music_onoff_button = Button(image=None, pos=(WIDTH // 2, 500), text_input=f"Music {game_music_onoff}", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
 
-      for button in [continue_game_button, quit_game_button, music_onoff_button]:
+      for button in [continue_game_button, saveAndQuit_game_button, music_onoff_button]:
         button.changeColor(menu_mouse_pos)
         button.update(window)
 
@@ -731,9 +742,14 @@ def main(window, paused_time_offset, movement):
           if continue_game_button.checkForInput(menu_mouse_pos):
             pause_menu = False
             paused_time_offset += pygame.time.get_ticks() - pause_start_time
-          if quit_game_button.checkForInput(menu_mouse_pos):
-            run = False
-            break
+          if saveAndQuit_game_button.checkForInput(menu_mouse_pos):
+            with open("savedGame.json", 'w', encoding="utf-8") as subor:
+              subor.write(str(json.dumps(
+                {
+                  "test_enemy": test_enemy.hp,
+                  "player": player.hp
+                }, indent=2)))
+            main_menu(window, movement)
           if music_onoff_button.checkForInput(menu_mouse_pos):
             game_music_onoff = "off"
         
@@ -835,9 +851,10 @@ def main_menu(window, movement):
     menu_text = get_font_cinzel(100).render("Hollow v2", True, "white")
     menu_rect = menu_text.get_rect(center=(WIDTH // 2, 200))
 
-    play_button = Button(image=None, pos=(WIDTH // 2, 400), text_input="Play Game", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
-    options_button = Button(image=None, pos=(WIDTH // 2, 460), text_input="Options", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
-    quit_button= Button(image=None, pos=(WIDTH // 2, 520), text_input="Quit Game", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
+    play_button = Button(image=None, pos=(WIDTH // 2, 400), text_input="Play New Game", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
+    continue_button = Button(image=None, pos=(WIDTH // 2, 460), text_input="Continue Game", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
+    options_button = Button(image=None, pos=(WIDTH // 2, 520), text_input="Options", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
+    quit_button= Button(image=None, pos=(WIDTH // 2, 580), text_input="Quit Game", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
 
     window.blit(menu_text, menu_rect)
     
@@ -848,7 +865,7 @@ def main_menu(window, movement):
     best_score_rect = best_score_text.get_rect(center=(150, 750))
     window.blit(best_score_text, best_score_rect)
 
-    for button in [play_button, options_button, quit_button]:
+    for button in [play_button, continue_button, options_button, quit_button]:
       button.changeColor(menu_mouse_pos)
       button.update(window)
         
@@ -858,10 +875,14 @@ def main_menu(window, movement):
         sys.exit()
       if event.type == pygame.MOUSEBUTTONDOWN:
         if play_button.checkForInput(menu_mouse_pos):
-          main(window, start_time, movement)
+          main(window, start_time, movement, False)
+        if continue_button.checkForInput(menu_mouse_pos):
+          main(window, start_time, movement, True)
         if options_button.checkForInput(menu_mouse_pos):
           options(bg_menu, movement)
         if quit_button.checkForInput(menu_mouse_pos):
+          with open("bestscore.txt", "w", encoding="utf-8") as z:
+              z.write(str(1000))
           pygame.quit()
           sys.exit()
 
