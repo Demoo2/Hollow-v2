@@ -18,7 +18,7 @@ death_sfx = pygame.mixer.Sound("assets/Sounds/PlayerDeath.wav")
 jump_sfx = pygame.mixer.Sound("assets/Sounds/PlayerJump.wav")
 
 def get_font_cinzel(size):
-  return pygame.font.Font("assets/Cinzel.ttf", size)
+  return pygame.font.Font("assets/fonts/Cinzel.ttf", size)
 
 
 class Player(pygame.sprite.Sprite):
@@ -189,8 +189,10 @@ class Enemy(pygame.sprite.Sprite):
   def __init__(self, x, y, width, height, hp):
     super().__init__()
     self.rect = pygame.Rect(x, y, width, height)
-    self.image = pygame.Surface((width, height), pygame.SRCALPHA)
-    self.image.fill("red")
+    # self.image = pygame.Surface((width, height), pygame.SRCALPHA)
+    self.image = pygame.image.load("assets/images/hammer.png").convert_alpha()
+    self.image = pygame.transform.scale(self.image, (width, height))
+    # self.image.fill("red")
     self.mask = pygame.mask.from_surface(self.image)
 
     self.width = width
@@ -599,7 +601,7 @@ def main(window, paused_time_offset, movement, continue_game):
   game_music_onoff = "on"
   pygame.mixer.Channel(0).play(game_sound)
 
-  bg_image = pygame.image.load("assets/brackground.webp").convert()
+  bg_image = pygame.image.load("assets/images/brackground.webp").convert()
   bg_image = pygame.transform.scale(bg_image, (WIDTH, HEIGHT))
 
   pause_menu = False
@@ -630,7 +632,8 @@ def main(window, paused_time_offset, movement, continue_game):
       subor.write(str(json.dumps(
         {
           "test_enemy": 1000,
-          "player": 5
+          "player": 5,
+          "time": 0
         }, indent=2)))
   else:
     player = Player(100, 100, 50, 50, 5)
@@ -641,9 +644,14 @@ def main(window, paused_time_offset, movement, continue_game):
     GroundSpikeMargin(10, 1000, 3)
   ]
 
+  try:
+    score_continue = hps["time"]
+  except:
+    score_continue = 0
+
   def game_over_screen(victory):
     GAME_OVER = True
-    score = current_time // 1000
+    score = current_time // 1000 + score_continue
     zapisData = True
     while GAME_OVER:
       game_over_screen = pygame.time.get_ticks()
@@ -660,11 +668,9 @@ def main(window, paused_time_offset, movement, continue_game):
           with open("bestscore.txt", "r", encoding="utf-8") as f:
             vstup = f.read().splitlines()
       
-          with open("bestscore.txt", "w", encoding="utf-8") as z:
-            if score < int(vstup[0]):
-              z.write(str(score))
-            else:
-              pass
+          if score < int(vstup[0]):
+            with open("bestscore.txt", "w", encoding="utf-8") as z:
+                z.write(str(score))
           zapisData = False
 
       play_again_button = Button(image=None, pos=(WIDTH // 2, 410), text_input="Play Again", font=get_font_cinzel(40), base_color="White", hovering_color="Gray")
@@ -738,7 +744,8 @@ def main(window, paused_time_offset, movement, continue_game):
               subor.write(str(json.dumps(
                 {
                   "test_enemy": test_enemy.hp,
-                  "player": player.hp
+                  "player": player.hp,
+                  "time": current_time // 1000 + score_continue
                 }, indent=2)))
             main_menu(window, movement)
           if music_onoff_button.checkForInput(menu_mouse_pos):
@@ -830,7 +837,7 @@ def options(bg_menu, movement):
     pygame.display.update()
 
 def main_menu(window, movement):
-  bg_menu = pygame.image.load("assets/MenuBackgroundVoid.jpg")
+  bg_menu = pygame.image.load("assets/images/MenuBackgroundVoid.jpg")
   bg_menu = pygame.transform.scale(bg_menu, (WIDTH, HEIGHT))
 
   while True:
