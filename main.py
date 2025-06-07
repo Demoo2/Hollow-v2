@@ -138,15 +138,19 @@ class Player(pygame.sprite.Sprite):
   def hit(self, win, test_enemy, movement):
     keys = pygame.key.get_pressed()
     if self.is_hitting and pygame.time.get_ticks() - self.hit_time < 100:
-      hit_image = pygame.Surface((self.rect.width + 20, self.rect.height + 20), pygame.SRCALPHA)
-      hit_image.fill((255, 0, 0, 100))
+      # hit_image = pygame.Surface((self.rect.width + 20, self.rect.height + 20), pygame.SRCALPHA)
+      # hit_image.fill((255, 0, 0, 100))
+      hit_image = pygame.image.load("assets/images/slash.png").convert_alpha()
+      hit_image = pygame.transform.scale(hit_image, (self.rect.width + 20, self.rect.height + 20))
 
       if keys[movement[0]]:
         hit_rect = pygame.Rect(self.rect.x - 10, self.rect.y - self.rect.height - 20, self.rect.width + 20, self.rect.height + 20)
+        hit_image = pygame.transform.rotate(hit_image, (90))
       elif self.direction == "right":
         hit_rect = pygame.Rect(self.rect.x + self.rect.width, self.rect.y - 10, self.rect.width + 20, self.rect.height + 20) 
       else:
         hit_rect = pygame.Rect(self.rect.x - self.rect.width - 20, self.rect.y - 10, self.rect.width + 20, self.rect.height + 20)
+        hit_image = pygame.transform.flip(hit_image, True, False)
       
       win.blit(hit_image, hit_rect)
 
@@ -636,7 +640,7 @@ def main(window, paused_time_offset, movement, continue_game):
 
   if continue_game:
     hps = json.load(open('savedGame.json', encoding="utf-8"))
-    player = Player(100, 100, 50, 50, hps["player"])
+    player = Player(100, 100, 60, 60, hps["player"])
     test_enemy = Enemy(650, 100, 200, 300, hps["test_enemy"])
     with open("savedGame.json", 'w', encoding="utf-8") as subor:
       subor.write(str(json.dumps(
@@ -646,7 +650,7 @@ def main(window, paused_time_offset, movement, continue_game):
           "time": 0
         }, indent=2)))
   else:
-    player = Player(100, 100, 50, 50, 5)
+    player = Player(100, 100, 60, 60, 5)
     test_enemy = Enemy(650, 100, 200, 300, 1000)
   attacks = [
     HandAttack(150, 200, 70),
