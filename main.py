@@ -27,8 +27,10 @@ class Player(pygame.sprite.Sprite):
   def __init__(self, x, y, width, height, hp):
     super().__init__()
     self.rect = pygame.Rect(x, y, width, height)
-    self.image = pygame.Surface((width, height), pygame.SRCALPHA)
-    self.image.fill("green")
+    # self.image = pygame.Surface((width, height), pygame.SRCALPHA)
+    # self.image.fill("green")
+    self.image = pygame.image.load("assets/images/jar.png").convert_alpha()
+    self.image = pygame.transform.scale(self.image, (width, height))
     self.mask = pygame.mask.from_surface(self.image)
 
     self.width = width
@@ -251,8 +253,10 @@ class Enemy(pygame.sprite.Sprite):
 class HandAttack(pygame.sprite.Sprite):
   def __init__(self, offset, width, height):
     super().__init__()
-    self.image = pygame.Surface((width, height), pygame.SRCALPHA)
-    self.image.fill("yellow")
+    # self.image = pygame.Surface((width, height), pygame.SRCALPHA)
+    # self.image.fill("yellow")
+    self.image = pygame.image.load("assets/images/brick.png").convert_alpha()
+    self.image = pygame.transform.scale(self.image, (width, height))
     self.rect = pygame.Rect(0, -1000, width, height)
     self.mask = pygame.mask.from_surface(self.image)
 
@@ -310,8 +314,10 @@ class HandAttack(pygame.sprite.Sprite):
 
 class GroundSpikeWhole(pygame.sprite.Sprite):
   def __init__(self, margin, countSpikes, width, height):
-    self.image = pygame.Surface((width, height), pygame.SRCALPHA)
-    self.image.fill("yellow")
+    # self.image = pygame.Surface((width, height), pygame.SRCALPHA)
+    # self.image.fill("yellow")
+    self.image = pygame.image.load("assets/images/nail.png").convert_alpha()
+    self.image = pygame.transform.scale(self.image, (width, height))
 
     self.countSpikes = countSpikes
     self.margin = margin
@@ -356,7 +362,7 @@ class GroundSpikeWhole(pygame.sprite.Sprite):
             x = i * (self.width + self.margin)
           elif self.choosed_side == "right":
             x = WIDTH - (i+1) * (self.width + self.margin)
-          y = HEIGHT - 60
+          y = HEIGHT - 100
           spike_rect = pygame.Rect(x, y, self.width, self.height)
           self.attacks_rect.append(spike_rect)
       else:
@@ -393,7 +399,7 @@ class GroundSpikeWhole(pygame.sprite.Sprite):
           spike = self.attacks_rect[self.grow_index]
           if descend_elapsed <= descend_duration:
             progress = (descend_elapsed / descend_duration) ** 2
-            spike.y = self.grow_start_y + progress * self.height / 1.4
+            spike.y = self.grow_start_y + progress * self.height / 1.3
           else:
             self.attacks_rect[self.grow_index] = spike
             self.grow_index += 1
@@ -407,8 +413,10 @@ class GroundSpikeWhole(pygame.sprite.Sprite):
 
 class GroundSpikeMargin(pygame.sprite.Sprite):
   def __init__(self, spikeCount, height, repeat):
-    self.image = pygame.Surface((WIDTH // spikeCount, height), pygame.SRCALPHA)
-    self.image.fill("yellow")
+    # self.image = pygame.Surface((WIDTH // spikeCount, height), pygame.SRCALPHA)
+    # self.image.fill("yellow")
+    self.image = pygame.image.load("assets/images/nail.png").convert_alpha()
+    self.image = pygame.transform.scale(self.image, (WIDTH // spikeCount, height))
 
     self.spikeCount = spikeCount
     self.width = WIDTH // spikeCount
@@ -501,8 +509,10 @@ class Object(pygame.sprite.Sprite):
 class Platform(Object):
   def __init__(self, x, y, width, height, can_teleport=False):
     super().__init__(x, y, width, height)
-    self.plat = pygame.Surface((width, height))
-    self.plat.fill("gray")
+    # self.plat = pygame.Surface((width, height))
+    # self.plat.fill("gray")
+    self.plat = pygame.image.load("assets/images/platform.png").convert_alpha()
+    self.plat = pygame.transform.scale(self.plat, (width, height))
     self.image.blit(self.plat, (0, 0))
     self.mask = pygame.mask.from_surface(self.image)
     self.can_teleport = can_teleport
